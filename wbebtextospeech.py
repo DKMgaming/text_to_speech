@@ -17,7 +17,7 @@ st.title("Text to Speech App - Vietnamese")
 
 # Giao diện nhập liệu
 text = st.text_area("Enter the text you want to convert to speech")
-rate = st.number_input("Select the speaking rate (not applicable with gTTS)", min_value=50, max_value=300, value=150)
+rate = st.number_input("Select the speaking rate (not applicable with gTTS)", min_value=50, max_value=400, value=200)
 
 if st.button("Convert to Speech"):
     if text.strip():
