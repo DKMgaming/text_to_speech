@@ -1,14 +1,11 @@
-from flask import Flask, render_template, request, send_file
 import pyttsx3
 from pydub import AudioSegment
 import tempfile
 import os
+import streamlit as st
 
-app = Flask(__name__)
-
-def text_to_speech_vietnamese(text, filename, rate):
+def text_to_speech_vietnamese(text, rate):
     engine = pyttsx3.init()
-
     voices = engine.getProperty('voices')
     
     vietnamese_voice_id = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\MSTTS_V110_viVN_An"
@@ -20,36 +17,49 @@ def text_to_speech_vietnamese(text, filename, rate):
             break
     
     if not voice_found:
-        print("Vietnamese voice not found. Using default voice.")
+        st.warning("Vietnamese voice not found. Using default voice.")
     
     engine.setProperty('rate', rate)
     
+    # Tạo tệp WAV tạm thời
     with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_wav_file:
         temp_wav_path = temp_wav_file.name
     
     engine.save_to_file(text, temp_wav_path)
     engine.runAndWait()
     
-    audio = AudioSegment.from_wav(temp_wav_path)
-    audio.export(filename, format='mp3')
-    
-    os.remove(temp_wav_path)
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/convert', methods=['POST'])
-def convert():
-    text = request.form['text']
-    rate = int(request.form['rate'])
-    
-    # Tạo tệp âm thanh và trả về cho người dùng
+    # Chuyển đổi sang MP3
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_mp3_file:
         temp_mp3_path = temp_mp3_file.name
-    text_to_speech_vietnamese(text, temp_mp3_path, rate)
     
-    return send_file(temp_mp3_path, as_attachment=True, download_name="output.mp3")
+    audio = AudioSegment.from_wav(temp_wav_path)
+    audio.export(temp_mp3_path, format='mp3')
+    
+    os.remove(temp_wav_path)
+    return temp_mp3_path
 
-if __name__ == '__main__':
-    app.run(debug=True)
+st.title("Text to Speech App - Vietnamese")
+
+# Giao diện nhập liệu
+text = st.text_area("Enter the text you want to convert to speech")
+rate = st.number_input("Select the speaking rate", min_value=50, max_value=300, value=150)
+
+if st.button("Convert to Speech"):
+    if text.strip():
+        output_mp3_path = text_to_speech_vietnamese(text, rate)
+        
+        # Phát âm thanh và cung cấp tùy chọn tải về
+        audio_file = open(output_mp3_path, "rb")
+        st.audio(audio_file, format="audio/mp3")
+        st.download_button(
+            label="Download MP3",
+            data=audio_file,
+            file_name="output.mp3",
+            mime="audio/mp3"
+        )
+        
+        # Xóa tệp tạm
+        audio_file.close()
+        os.remove(output_mp3_path)
+    else:
+        st.warning("Please enter some text to convert.")
